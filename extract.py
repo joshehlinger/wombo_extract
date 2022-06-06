@@ -17,9 +17,11 @@ STYLES = {
     5: 'Fantasy Art',
     6: 'Vibrant',
     7: 'HD',
+    8: 'Pastel',
     9: 'Psychic',
     10: 'Dark Fantasy',
     11: 'Mystical',
+    12: 'Festive',
     13: 'Baroque',
     14: 'Etching',
     15: 'S.Dali',
@@ -34,7 +36,9 @@ STYLES = {
     24: 'Love',
     25: 'Death',
     26: 'Robots',
-    27: 'Radioactive'
+    27: 'Radioactive',
+    28: 'Melancholic',
+    29: 'Transitory'
 }
 
 
