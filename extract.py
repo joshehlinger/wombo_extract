@@ -104,10 +104,8 @@ class Wombo:
         all_images.sort()
         images = [Image.open(f'{self.directory}/{x}') for x in all_images]
         widths, heights = zip(*(i.size for i in images))
-        num_images = len(widths)
-        rows = int(math.ceil(num_images / 4))
         total_width = max(widths) * 4
-        max_height = max(heights) * rows
+        max_height = max(heights) * int(math.ceil(len(widths) / 4))
 
         new_im = Image.new('RGB', (total_width, max_height))
 
