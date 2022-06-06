@@ -1,6 +1,5 @@
 # Wombo Extractor
-Simple silly CLI script to pull the downloadable links out of the wombo dream creator. 
-Very rough around the edges right now
+Simple CLI script to pull the downloadable links out of the wombo dream creator.
 
 Wombo Dream: https://app.wombo.art/
 
@@ -13,6 +12,8 @@ Wombo Dream: https://app.wombo.art/
 
 
 ## Usage
-`python extract.py --email=MyName@foo.bar --password=Pass --prompt="test foo bar"`
+`python extract.py --email=email@foo.bar --password=p@assword --prompt="test foo bar" --attempts=5`
 
 Note: You'll need to double-quote the `prompt` if it has spaces
+
+Images are found in /images

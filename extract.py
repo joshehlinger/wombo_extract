@@ -18,15 +18,16 @@ class Wombo:
             'https://www.googleapis.com/identitytoolkit/v3/relyingparty/'
             'verifyPassword?key=AIzaSyDCvp5MTJLUdtBYEKYWXJrlLzu1zuKM6Xw')
         self.headers = {}
-        self.poll_sleep = 5
 
         self.email = config.email
         self.password = config.password
         self.prompt = config.prompt
         self.style = config.style
         self.attempts = config.attempts
+        self.poll_sleep = config.sleep
 
         self.directory = f"./images/{config.prompt.replace(' ', '_')}"
+        self.client = httpx.Client(timeout=10.0)
 
     def auth(self) -> str:
         auth_body = {
@@ -37,17 +38,16 @@ class Wombo:
         resp = httpx.post(str(self.auth_url), json=auth_body)
         body = resp.json()
         id_token = body['idToken']
-        refresh_token = body['refreshToken']
 
         return id_token
 
-    def get_task(self, client) -> str:
+    def get_task(self) -> str:
         task_url = self.base_url / 'tasks'
-        resp = client.post(str(task_url), headers=self.headers)
+        resp = self.client.post(str(task_url), headers=self.headers)
         resp.raise_for_status()
         return resp.json()['id']
 
-    def start_task(self, client, task_id, prompt, style, freq=10):
+    def start_task(self, task_id: str, prompt: str, style: int, freq=10):
         body = {
             'input_spec': {
                 'prompt': prompt,
@@ -56,12 +56,12 @@ class Wombo:
             }
         }
         url = self.base_url / 'tasks' / task_id
-        resp = client.put(str(url), headers=self.headers, json=body)
+        resp = self.client.put(str(url), headers=self.headers, json=body)
         resp.raise_for_status()
 
-    def check_task(self, client, task_id):
+    def check_task(self, task_id: str):
         url = self.base_url / 'tasks' / task_id
-        resp = client.get(str(url), headers=self.headers)
+        resp = self.client.get(str(url), headers=self.headers)
         resp.raise_for_status()
         return resp.json()
 
@@ -100,30 +100,34 @@ class Wombo:
         except OSError:
             shutil.rmtree(self.directory)
             os.mkdir(self.directory)
+
         token = self.auth()
-        with httpx.Client(timeout=10.0) as client:
-            self.headers = {
-                'Authorization': f'bearer {token}',
-                'Content-Type': 'text/plain;charset=UTF-8',
-                'service': 'Dream',
-                'Origin': 'https://app.wombo.art',
-                'Referer': 'https://app.wombo.art/'
-            }
-            for x in range(1, self.attempts + 1):
-                task_id = self.get_task(client)
-                self.start_task(client, task_id, self.prompt, self.style)
-                pending = True
-                while pending:
-                    print('generating...')
-                    time.sleep(self.poll_sleep)
-                    task = self.check_task(client, task_id)
-                    pending = task['state'] != 'completed'
-                print(task['result']['final'])
-                with open(f'{self.directory}/{x}.jpg', 'wb') as f:
-                    f.write(httpx.get(task['result']['final']).content)
+        self.headers = {
+            'Authorization': f'bearer {token}',
+            'Content-Type': 'text/plain;charset=UTF-8',
+            'service': 'Dream',
+            'Origin': 'https://app.wombo.art',
+            'Referer': 'https://app.wombo.art/'
+        }
+        start = time.time()
+        for x in range(1, self.attempts + 1):
+            task_id = self.get_task()
+            self.start_task(task_id, self.prompt, self.style)
+
+            pending = True
+            task = {}
+            while pending:
+                print(f'Generating. Elapsed time: {int(time.time() - start)}s')
+                time.sleep(self.poll_sleep)
+                task = self.check_task(task_id)
+                pending = task['state'] != 'completed'
+            print(task['result']['final'])
+            with open(f'{self.directory}/{x}.jpg', 'wb') as f:
+                f.write(httpx.get(task['result']['final']).content)
 
         if self.attempts > 1:
             self.generate_gestalt_image()
+        self.client.close()
 
 
 def arg_parser() -> argparse.ArgumentParser:
@@ -143,7 +147,12 @@ def arg_parser() -> argparse.ArgumentParser:
                         dest='attempts',
                         type=int,
                         default=1,
-                        help='num attempts')
+                        help='num attempts'),
+    parser.add_argument('--sleep',
+                        dest='sleep',
+                        type=int,
+                        default=5,
+                        help='Seconds to sleep between GET polls')
     return parser
 
 
