@@ -1,13 +1,41 @@
 import argparse
+import datetime
 import math
 import os
-import shutil
 import sys
 import time
 
 import httpx
 import yarl
 from PIL import Image
+
+STYLES = {
+    1: 'Synthwave',
+    2: 'Ukiyoe',
+    3: 'No Style',
+    4: 'Steampunk',
+    5: 'Fantasy Art',
+    6: 'Vibrant',
+    7: 'HD',
+    9: 'Psychic',
+    10: 'Dark Fantasy',
+    11: 'Mystical',
+    13: 'Baroque',
+    14: 'Etching',
+    15: 'S.Dali',
+    16: 'Wuhtercuhler',
+    17: 'Provenance',
+    18: 'Rose Gold',
+    19: 'Moonwalker',
+    20: 'Blacklight',
+    21: 'Psychedelic',
+    22: 'Ghibli',
+    23: 'Surreal',
+    24: 'Love',
+    25: 'Death',
+    26: 'Robots',
+    27: 'Radioactive'
+}
 
 
 class Wombo:
@@ -26,7 +54,10 @@ class Wombo:
         self.attempts = config.attempts
         self.poll_sleep = config.sleep
 
-        self.directory = f"./images/{config.prompt.replace(' ', '_')}"
+        timestamp = datetime.datetime.now().isoformat()
+        style = STYLES[config.style].replace(' ', '_')
+        cleaned_prompt = config.prompt.replace(' ', '_')
+        self.directory = f"./images/{cleaned_prompt}-{style}-{timestamp}"
         self.client = httpx.Client(timeout=10.0)
 
     def auth(self) -> str:
@@ -92,15 +123,10 @@ class Wombo:
                 y_offset += im.size[1]
                 row_count = 0
 
-        new_im.save(f'{self.directory}/FINAL.jpg')
+        new_im.save(f'{self.directory}/GESTALT.jpg')
 
     def generate(self):
-        try:
-            os.mkdir(self.directory)
-        except OSError:
-            shutil.rmtree(self.directory)
-            os.mkdir(self.directory)
-
+        os.mkdir(self.directory)
         token = self.auth()
         self.headers = {
             'Authorization': f'bearer {token}',
