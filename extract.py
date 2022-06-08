@@ -10,35 +10,35 @@ import yarl
 from PIL import Image
 
 STYLES = {
-    1: 'Synthwave',
-    2: 'Ukiyoe',
-    3: 'No Style',
-    4: 'Steampunk',
-    5: 'Fantasy Art',
-    6: 'Vibrant',
-    7: 'HD',
-    8: 'Pastel',
-    9: 'Psychic',
-    10: 'Dark Fantasy',
-    11: 'Mystical',
-    12: 'Festive',
-    13: 'Baroque',
-    14: 'Etching',
-    15: 'S.Dali',
-    16: 'Wuhtercuhler',
-    17: 'Provenance',
-    18: 'Rose Gold',
-    19: 'Moonwalker',
-    20: 'Blacklight',
-    21: 'Psychedelic',
-    22: 'Ghibli',
-    23: 'Surreal',
-    24: 'Love',
-    25: 'Death',
-    26: 'Robots',
-    27: 'Radioactive',
-    28: 'Melancholic',
-    29: 'Transitory'
+    'synthwave': 1,
+    'ukiyoe': 2,
+    'no style': 3,
+    'steampunk': 4,
+    'fantasy art': 5,
+    'bibrant': 6,
+    'hd': 7,
+    'pastel': 8,
+    'psychic': 9,
+    'dark fantasy': 10,
+    'mystical': 11,
+    'festive': 12,
+    'baroque': 13,
+    'etching': 14,
+    's.dali': 15,
+    'wuhtercuhler': 16,
+    'provenance': 17,
+    'rose gold': 18,
+    'moonwalker': 19,
+    'blacklight': 20,
+    'psychedelic': 21,
+    'ghibli': 22,
+    'surreal': 23,
+    'love': 24,
+    'death': 25,
+    'robots': 26,
+    'radioactive': 27,
+    'melancholic': 28,
+    'transitory': 29
 }
 
 
@@ -54,12 +54,23 @@ class Wombo:
         self.email = config.email
         self.password = config.password
         self.prompt = config.prompt
-        self.style = config.style
         self.attempts = config.attempts
         self.poll_sleep = config.sleep
 
+        try:
+            self.style = int(config.style)
+        except ValueError:
+            style_name = config.style.lower().strip()
+            self.style = STYLES[style_name]
+
         timestamp = datetime.datetime.now().isoformat()
-        style = STYLES[config.style].replace(' ', '_')
+        style = None
+        for name, idx in STYLES.items():
+            if self.style == idx:
+                style = name.replace(' ', '_')
+                break
+        if style is None:
+            raise ValueError('Invalid style input')
         cleaned_prompt = config.prompt.replace(' ', '_')
         self.directory = f"./images/{cleaned_prompt}-{style}-{timestamp}"
         self.client = httpx.Client(timeout=10.0)
@@ -168,9 +179,8 @@ def arg_parser() -> argparse.ArgumentParser:
                         help='Wombo string prompt (put in double quotes!)')
     parser.add_argument('--style',
                         dest='style',
-                        type=int,
-                        default=3,
-                        help='Numeric style integer')
+                        default='3',
+                        help=f'Styles: {STYLES}')
     parser.add_argument('--attempts',
                         dest='attempts',
                         type=int,
