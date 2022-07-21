@@ -45,7 +45,7 @@ STYLES = {
 class Wombo:
 
     def __init__(self, config):
-        self.base_url = yarl.URL('https://app.wombo.art/api')
+        self.base_url = yarl.URL('https://paint.api.wombo.ai/api')
         self.auth_url = yarl.URL(
             'https://www.googleapis.com/identitytoolkit/v3/relyingparty/'
             'verifyPassword?key=AIzaSyDCvp5MTJLUdtBYEKYWXJrlLzu1zuKM6Xw')
