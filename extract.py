@@ -158,7 +158,7 @@ class Wombo:
         }
         start = time.time()
         attempt = 1
-        while attempt <= self.attempts + 1:
+        while attempt <= self.attempts:
             try:
                 task_id = self.get_task()
                 self.start_task(task_id, self.prompt, self.style)
