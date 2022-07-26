@@ -56,6 +56,7 @@ class Wombo:
         self.prompt = config.prompt
         self.attempts = config.attempts
         self.poll_sleep = config.sleep
+        self.poll_count = config.poll_count
 
         try:
             self.style = int(config.style)
@@ -72,6 +73,7 @@ class Wombo:
         if style is None:
             raise ValueError('Invalid style input')
         cleaned_prompt = config.prompt.replace(' ', '_')
+        self.name = f"{cleaned_prompt}-{style}-{timestamp}"
         self.directory = f"./images/{cleaned_prompt}-{style}-{timestamp}"
         self.client = httpx.Client(timeout=10.0)
 
@@ -136,7 +138,13 @@ class Wombo:
                 y_offset += im.size[1]
                 row_count = 0
 
-        new_im.save(f'{self.directory}/GESTALT.jpg')
+        new_im.save(f'{self.directory}/{self.name}.jpg')
+
+    def handle_infinite_polling(self, start: float, count: int):
+        print(f'Generating. Elapsed time: {int(time.time() - start)}s')
+        count += 1
+        if count > self.poll_count:
+            raise OSError('Too many polls!')
 
     def generate(self):
         os.mkdir(self.directory)
@@ -149,20 +157,26 @@ class Wombo:
             'Referer': 'https://app.wombo.art/'
         }
         start = time.time()
-        for x in range(1, self.attempts + 1):
-            task_id = self.get_task()
-            self.start_task(task_id, self.prompt, self.style)
+        attempt = 1
+        while attempt <= self.attempts + 1:
+            try:
+                task_id = self.get_task()
+                self.start_task(task_id, self.prompt, self.style)
 
-            pending = True
-            task = {}
-            while pending:
-                print(f'Generating. Elapsed time: {int(time.time() - start)}s')
-                time.sleep(self.poll_sleep)
-                task = self.check_task(task_id)
-                pending = task['state'] != 'completed'
-            print(task['result']['final'])
-            with open(f'{self.directory}/{x}.jpg', 'wb') as f:
-                f.write(httpx.get(task['result']['final']).content)
+                pending = True
+                task = {}
+                pending_count = 0
+                while pending:
+                    self.handle_infinite_polling(start, pending_count)
+                    time.sleep(self.poll_sleep)
+                    task = self.check_task(task_id)
+                    pending = task['state'] != 'completed'
+                print(task['result']['final'])
+                with open(f'{self.directory}/{attempt}.jpg', 'wb') as f:
+                    f.write(httpx.get(task['result']['final']).content)
+                    attempt += 1
+            except Exception as ex:
+                print(f'Exception {ex} raised')
 
         if self.attempts > 1:
             self.generate_gestalt_image()
@@ -191,6 +205,11 @@ def arg_parser() -> argparse.ArgumentParser:
                         type=int,
                         default=5,
                         help='Seconds to sleep between GET polls')
+    parser.add_argument('--poll_count',
+                        dest='poll_count',
+                        type=int,
+                        default=72,
+                        help='Number of intervals to wait for')
     return parser
 
 
