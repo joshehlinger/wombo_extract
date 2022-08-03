@@ -2,6 +2,7 @@ import argparse
 import datetime
 import math
 import os
+import re
 import sys
 import time
 
@@ -9,6 +10,7 @@ import httpx
 import yarl
 from PIL import Image
 
+# Note: Some of these styles only work for premium accounts
 STYLES = {
     'synthwave': 1,
     'ukiyoe': 2,
@@ -38,7 +40,20 @@ STYLES = {
     'robots': 26,
     'radioactive': 27,
     'melancholic': 28,
-    'transitory': 29
+    'transitory': 29,
+    'aquatic': 30,
+    'toasty': 31,
+    'realistic': 32,
+    'van gogh': 33,
+    'arcane': 34,
+    'throwback': 35,
+    'daydream': 36,
+    'ink': 38,
+    'pandora': 39,
+    'malevolent': 40,
+    'street art': 41,
+    'unrealistic': 42,
+    'vibrance': 43
 }
 
 
@@ -64,7 +79,8 @@ class Wombo:
             style_name = config.style.lower().strip()
             self.style = STYLES[style_name]
 
-        timestamp = datetime.datetime.now().isoformat()
+        timestamp = re.sub(r'(:|\.)', '',
+                           str(datetime.datetime.now().isoformat()))
         style = None
         for name, idx in STYLES.items():
             if self.style == idx:
@@ -138,7 +154,7 @@ class Wombo:
                 y_offset += im.size[1]
                 row_count = 0
 
-        new_im.save(f'{self.directory}/{self.name}.jpg')
+        new_im.save(f'{self.directory}/{self.name}.jpg', quality=100)
 
     def handle_infinite_polling(self, start: float, count: int):
         print(f'Generating. Elapsed time: {int(time.time() - start)}s')
