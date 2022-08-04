@@ -34,7 +34,6 @@ STYLES = {
     'blacklight': 20,
     'psychedelic': 21,
     'ghibli': 22,
-    'surreal': 23,
     'love': 24,
     'death': 25,
     'robots': 26,
