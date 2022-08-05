@@ -187,7 +187,8 @@ class Wombo:
                     task = self.check_task(task_id)
                     pending = task['state'] != 'completed'
                 print(task['result']['final'])
-                with open(f'{self.directory}/{attempt}.jpg', 'wb') as f:
+                with open(f'{self.directory}/{format((attempt), "02")}.jpg',
+                          'wb') as f:
                     f.write(httpx.get(task['result']['final']).content)
                     attempt += 1
             except Exception as ex:
@@ -208,7 +209,7 @@ def arg_parser() -> argparse.ArgumentParser:
                         help='Wombo string prompt (put in double quotes!)')
     parser.add_argument('--style',
                         dest='style',
-                        default='3',
+                        default='32',
                         help=f'Styles: {STYLES}')
     parser.add_argument('--attempts',
                         dest='attempts',
