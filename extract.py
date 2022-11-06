@@ -9,6 +9,7 @@ import yarl
 from PIL import Image
 
 # Note: Some of these styles only work for premium accounts
+# Don't forget to stay hydrated
 STYLES = {
     'synthwave': 1,
     'ukiyoe': 2,
