@@ -226,7 +226,7 @@ def arg_parser() -> argparse.ArgumentParser:
     parser.add_argument('--poll_count',
                         dest='poll_count',
                         type=int,
-                        default=20,
+                        default=5,
                         help='Number of intervals to wait for')
     return parser
 
