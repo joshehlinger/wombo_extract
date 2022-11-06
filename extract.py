@@ -71,6 +71,7 @@ class Wombo:
         self.attempts = config.attempts
         self.poll_sleep = config.sleep
         self.poll_count = config.poll_count
+        self.pending_count = 0
 
         try:
             self.style = int(config.style)
@@ -155,10 +156,11 @@ class Wombo:
 
         new_im.save(f'{self.directory}/{self.name}.jpg', quality=100)
 
-    def handle_infinite_polling(self, start: float, count: int):
+    def handle_infinite_polling(self, start: float):
         print(f'Generating. Elapsed time: {int(time.time() - start)}s')
-        count += 1
-        if count > self.poll_count:
+        print (f'Poll Count: {self.pending_count}')
+        self.pending_count += 1
+        if self.pending_count > self.poll_count:
             raise OSError('Too many polls!')
 
     def generate(self):
@@ -180,9 +182,9 @@ class Wombo:
 
                 pending = True
                 task = {}
-                pending_count = 0
+                self.pending_count = 0
                 while pending:
-                    self.handle_infinite_polling(start, pending_count)
+                    self.handle_infinite_polling(start)
                     time.sleep(self.poll_sleep)
                     task = self.check_task(task_id)
                     pending = task['state'] != 'completed'
@@ -224,7 +226,7 @@ def arg_parser() -> argparse.ArgumentParser:
     parser.add_argument('--poll_count',
                         dest='poll_count',
                         type=int,
-                        default=72,
+                        default=20,
                         help='Number of intervals to wait for')
     return parser
 
