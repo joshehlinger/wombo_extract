@@ -79,8 +79,6 @@ class Wombo:
             style_name = config.style.lower().strip()
             self.style = STYLES[style_name]
 
-        timestamp = re.sub(r'(:|\.)', '',
-                           str(datetime.datetime.now().isoformat()))
         style = None
         for name, idx in STYLES.items():
             if self.style == idx:
@@ -89,8 +87,8 @@ class Wombo:
         if style is None:
             style = f'Style{self.style}'
         cleaned_prompt = config.prompt.replace('/', '_')
-        self.name = f"{cleaned_prompt}-{style}-{timestamp}"
-        self.directory = f"./images/{cleaned_prompt}-{style}-{timestamp}"
+        self.name = f"{cleaned_prompt}  ({style.capitalize()})"
+        self.directory = f"./images/{self.name}"
         self.client = httpx.Client(timeout=10.0)
 
     def auth(self) -> str:
@@ -99,7 +97,7 @@ class Wombo:
             'password': self.password,
             'returnSecureToken': True
         }
-        resp = httpx.post(str(self.auth_url), json=auth_body)
+        resp =  self.client.post(str(self.auth_url), json=auth_body)
         body = resp.json()
         id_token = body['idToken']
 
@@ -163,8 +161,21 @@ class Wombo:
         if self.pending_count > self.poll_count:
             raise OSError('Too many polls!')
 
-    def generate(self):
+    def create_new_directory(self):
+        new_dir_found = False
+        count = 0
+        directory = self.directory
+        while not new_dir_found:
+            if os.path.exists(directory):
+                count += 1
+                directory = f'{self.directory} {count}'
+            else:
+                new_dir_found = True
+        self.directory = directory
         os.mkdir(self.directory)
+
+    def generate(self):
+        self.create_new_directory()
         token = self.auth()
         self.headers = {
             'Authorization': f'bearer {token}',
