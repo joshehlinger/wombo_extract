@@ -88,7 +88,7 @@ class Wombo:
                 break
         if style is None:
             style = f'Style{self.style}'
-        cleaned_prompt = config.prompt.replace(' ', '_')
+        cleaned_prompt = config.prompt.replace('/', '_')
         self.name = f"{cleaned_prompt}-{style}-{timestamp}"
         self.directory = f"./images/{cleaned_prompt}-{style}-{timestamp}"
         self.client = httpx.Client(timeout=10.0)
