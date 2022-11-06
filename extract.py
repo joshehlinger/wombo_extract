@@ -87,7 +87,7 @@ class Wombo:
                 style = name.replace(' ', '_')
                 break
         if style is None:
-            raise ValueError('Invalid style input')
+            style = f'Style{self.style}'
         cleaned_prompt = config.prompt.replace(' ', '_')
         self.name = f"{cleaned_prompt}-{style}-{timestamp}"
         self.directory = f"./images/{cleaned_prompt}-{style}-{timestamp}"
