@@ -235,7 +235,7 @@ def arg_parser() -> argparse.ArgumentParser:
     parser.add_argument('--password', dest='password', help='password')
     parser.add_argument('--prompt',
                         dest='prompt',
-                        default='foobar',
+                        default='yarn doodle goat',
                         help='Wombo string prompt (put in double quotes!)')
     parser.add_argument('--style',
                         dest='style',
