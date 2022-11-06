@@ -154,7 +154,7 @@ class Wombo:
                 y_offset += im.size[1]
                 row_count = 0
 
-        new_im.save(f'{self.directory}/{self.name}.jpg', quality=100)
+        new_im.save(f'./images/{self.name}.jpg', quality=100)
 
     def handle_infinite_polling(self, start: float):
         print(f'Generating. Elapsed time: {int(time.time() - start)}s')
