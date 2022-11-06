@@ -175,15 +175,14 @@ class Wombo:
             raise PollingTimeoutError()
 
     def create_new_directory(self):
-        new_dir_found = False
         count = 0
         directory = self.directory
-        while not new_dir_found:
+        while True:
             if os.path.exists(directory):
                 count += 1
                 directory = f'{self.directory} {count}'
             else:
-                new_dir_found = True
+                break
         self.directory = directory
         os.mkdir(self.directory)
 
