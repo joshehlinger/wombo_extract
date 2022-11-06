@@ -75,6 +75,7 @@ class Wombo:
         self.attempts = config.attempts
         self.poll_sleep = config.sleep
         self.poll_count = config.poll_count
+        self.max_poll_count_timeout = config.max_poll_count_timeout
         self.pending_count = 0
 
         try:
@@ -196,6 +197,7 @@ class Wombo:
             'Referer': 'https://app.wombo.art/'
         }
         start = time.time()
+        max_poll_count_timeout = 0
         attempt = 1
         while attempt <= self.attempts:
             try:
@@ -217,6 +219,10 @@ class Wombo:
                     attempt += 1
             except PollingTimeoutError:
                 print(f'Too many polls! The limit is {self.poll_count}')
+                max_poll_count_timeout += 1
+                if max_poll_count_timeout >= self.max_poll_count_timeout:
+                    raise RuntimeError('Max poll count timeout reached: '
+                                       f'{self.max_poll_count_timeout}')
 
         if self.attempts > 1:
             self.generate_gestalt_image()
@@ -250,6 +256,12 @@ def arg_parser() -> argparse.ArgumentParser:
                         type=int,
                         default=5,
                         help='Number of intervals to wait for')
+    parser.add_argument('--max_poll_count_timeout',
+                        dest='max_poll_count_timeout',
+                        type=int,
+                        default=24,
+                        help='Maximum number of times allowed to poll count '
+                        'timeout before exit')
     return parser
 
 
