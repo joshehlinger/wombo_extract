@@ -1,8 +1,6 @@
 import argparse
-import datetime
 import math
 import os
-import re
 import sys
 import time
 
@@ -97,7 +95,7 @@ class Wombo:
             'password': self.password,
             'returnSecureToken': True
         }
-        resp =  self.client.post(str(self.auth_url), json=auth_body)
+        resp = self.client.post(str(self.auth_url), json=auth_body)
         body = resp.json()
         id_token = body['idToken']
 
@@ -156,7 +154,7 @@ class Wombo:
 
     def handle_infinite_polling(self, start: float):
         print(f'Generating. Elapsed time: {int(time.time() - start)}s')
-        print (f'Poll Count: {self.pending_count}')
+        print(f'Poll Count: {self.pending_count}')
         self.pending_count += 1
         if self.pending_count > self.poll_count:
             raise OSError('Too many polls!')
