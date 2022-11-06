@@ -54,6 +54,12 @@ STYLES = {
 }
 
 
+class PollingTimeoutError(Exception):
+
+    def __init__(self):
+        super().__init__()
+
+
 class Wombo:
 
     def __init__(self, config):
@@ -117,7 +123,14 @@ class Wombo:
         }
         url = self.base_url / 'tasks' / task_id
         resp = self.client.put(str(url), headers=self.headers, json=body)
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as ex:
+            if ex.response.status_code == 401:
+                raise RuntimeError(
+                    "You probably don't have access to this style. Try "
+                    "signing up for a premium account")
+            raise
 
     def check_task(self, task_id: str):
         url = self.base_url / 'tasks' / task_id
@@ -157,7 +170,7 @@ class Wombo:
         print(f'Poll Count: {self.pending_count}')
         self.pending_count += 1
         if self.pending_count > self.poll_count:
-            raise OSError('Too many polls!')
+            raise PollingTimeoutError()
 
     def create_new_directory(self):
         new_dir_found = False
@@ -202,8 +215,8 @@ class Wombo:
                           'wb') as f:
                     f.write(httpx.get(task['result']['final']).content)
                     attempt += 1
-            except Exception as ex:
-                print(f'Exception {ex} raised')
+            except PollingTimeoutError:
+                print(f'Too many polls! The limit is {self.poll_count}')
 
         if self.attempts > 1:
             self.generate_gestalt_image()
