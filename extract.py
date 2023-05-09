@@ -1,57 +1,21 @@
 import argparse
-import math
 import os
 import sys
 import time
 
 import httpx
 import yarl
-from PIL import Image
 
-# Note: Some of these styles only work for premium accounts
-# Don't forget to stay hydrated
-STYLES = {
-    'synthwave': 1,
-    'ukiyoe': 2,
-    'no style': 3,
-    'steampunk': 4,
-    'fantasy art': 5,
-    'bibrant': 6,
-    'hd': 7,
-    'pastel': 8,
-    'psychic': 9,
-    'dark fantasy': 10,
-    'mystical': 11,
-    'festive': 12,
-    'baroque': 13,
-    'etching': 14,
-    's.dali': 15,
-    'wuhtercuhler': 16,
-    'provenance': 17,
-    'rose gold': 18,
-    'moonwalker': 19,
-    'blacklight': 20,
-    'psychedelic': 21,
-    'ghibli': 22,
-    'love': 24,
-    'death': 25,
-    'robots': 26,
-    'radioactive': 27,
-    'melancholic': 28,
-    'transitory': 29,
-    'aquatic': 30,
-    'toasty': 31,
-    'realistic': 32,
-    'van gogh': 33,
-    'arcane': 34,
-    'throwback': 35,
-    'daydream': 36,
-    'ink': 38,
-    'pandora': 39,
-    'malevolent': 40,
-    'street art': 41,
-    'unrealistic': 42,
-    'vibrance': 43
+from gestalt import generate_gestalt_image
+from styles import STYLES
+
+ASPECT_RATIOS = {
+    '1:1': 'ratio_1',
+    '16:9': 'ratio_16_9',
+    '9:16': 'ratio_9_16',
+    '4:3': 'ratio_4_3',
+    '3:4': 'ratio_3_4',
+    '960:1568': 'old_vertical_ratio',
 }
 
 
@@ -64,10 +28,11 @@ class PollingTimeoutError(Exception):
 class Wombo:
 
     def __init__(self, config):
-        self.base_url = yarl.URL('https://paint.api.wombo.ai/api')
+        self.base_url = yarl.URL('https://paint.api.wombo.ai/api/v2')
         self.auth_url = yarl.URL(
             'https://www.googleapis.com/identitytoolkit/v3/relyingparty/'
             'verifyPassword?key=AIzaSyDCvp5MTJLUdtBYEKYWXJrlLzu1zuKM6Xw')
+
         self.headers = {}
 
         self.email = config.email
@@ -79,6 +44,16 @@ class Wombo:
         self.max_poll_count_timeout = config.max_poll_count_timeout
         self.pending_count = 0
 
+        self.input_image_id = config.input_image_id
+        self.weight = config.input_image_id.upper()
+        self.variation_id = config.variation_id
+
+        self.ratio_string = config.ratio
+        try:
+            self.ratio = ASPECT_RATIOS[config.ratio]
+        except KeyError:
+            self.ratio = ASPECT_RATIOS['1:1']
+
         try:
             self.style = int(config.style)
         except ValueError:
@@ -88,12 +63,16 @@ class Wombo:
         style = None
         for name, idx in STYLES.items():
             if self.style == idx:
-                style = name.replace(' ', '_')
+                style = name
                 break
         if style is None:
             style = f'Style{self.style}'
-        cleaned_prompt = config.prompt.replace('/', '_')
-        self.name = f"{cleaned_prompt}  ({style.capitalize()})"
+
+        cleaned_prompt = config.prompt.replace('/', '_')[0:200]
+        if self.style == 78:
+            self.name = f"{cleaned_prompt}"
+        else:
+            self.name = f"{cleaned_prompt}  ({style.capitalize()})"
         self.directory = f"./images/{self.name}"
         self.client = httpx.Client(timeout=10.0)
 
@@ -109,22 +88,33 @@ class Wombo:
 
         return id_token
 
-    def get_task(self) -> str:
-        task_url = self.base_url / 'tasks'
-        resp = self.client.post(str(task_url), headers=self.headers)
-        resp.raise_for_status()
-        return resp.json()['id']
+    def start_task(self, freq: int = 10):
+        body = {'input_spec': {'display_freq': freq, 'style': self.style}}
+        if self.variation_id:
+            body['input_spec'].update({
+                'gen_type': 'VARIATION',
+                'input_image': {
+                    'original_task_id': self.variation_id
+                }
+            })
+        elif self.input_image_id:
+            body['input_spec'].update({
+                'prompt': self.prompt,
+                'aspect_ratio': self.ratio,
+                'input_image': {
+                    'mediastore_id': self.input_image_id,
+                    'weight': self.weight
+                }
+            })
+        else:
+            body['input_spec'].update({
+                'prompt': self.prompt,
+                'aspect_ratio': self.ratio,
+            })
 
-    def start_task(self, task_id: str, prompt: str, style: int, freq=10):
-        body = {
-            'input_spec': {
-                'prompt': prompt,
-                'style': style,
-                'display_freq': freq
-            }
-        }
-        url = self.base_url / 'tasks' / task_id
-        resp = self.client.put(str(url), headers=self.headers, json=body)
+        url = self.base_url / 'tasks'
+        resp = self.client.post(str(url), headers=self.headers, json=body)
+
         try:
             resp.raise_for_status()
         except httpx.HTTPStatusError as ex:
@@ -133,6 +123,7 @@ class Wombo:
                     "You probably don't have access to this style. Try "
                     "signing up for a premium account")
             raise
+        return resp.json()['id']
 
     def check_task(self, task_id: str):
         url = self.base_url / 'tasks' / task_id
@@ -140,36 +131,9 @@ class Wombo:
         resp.raise_for_status()
         return resp.json()
 
-    def generate_gestalt_image(self):
-        all_images = [
-            f for f in os.listdir(self.directory)
-            if os.path.isfile(os.path.join(self.directory, f))
-        ]
-        all_images.sort()
-        images = [Image.open(f'{self.directory}/{x}') for x in all_images]
-        widths, heights = zip(*(i.size for i in images))
-        total_width = max(widths) * 4
-        max_height = max(heights) * int(math.ceil(len(widths) / 4))
-
-        new_im = Image.new('RGB', (total_width, max_height))
-
-        x_offset = 0
-        y_offset = 0
-        row_count = 0
-        for im in images:
-            new_im.paste(im, (x_offset, y_offset))
-            x_offset += im.size[0]
-            row_count += 1
-            if row_count == 4:
-                x_offset = 0
-                y_offset += im.size[1]
-                row_count = 0
-
-        new_im.save(f'./images/{self.name}.jpg', quality=100)
-
     def handle_infinite_polling(self, start: float):
         print(f'Generating. Elapsed time: {int(time.time() - start)}s')
-        print(f'Poll Count: {self.pending_count}')
+        print(f'Poll Count: {self.pending_count} out of {self.poll_count}')
         self.pending_count += 1
         if self.pending_count > self.poll_count:
             raise PollingTimeoutError()
@@ -188,22 +152,23 @@ class Wombo:
 
     def generate(self):
         self.create_new_directory()
+
+        textfile = open(f'{self.directory}/info.txt', 'w+')
+        textfile.write(
+            f'{self.prompt}\nstyle: {self.style}\naspect ratio: '
+            f'{self.ratio_string}\ntime: {time.strftime("%Y-%m-%d %H:%M:%S")}'
+            f'\n\nauth_url: {self.auth_url}\n\n')
+        textfile.close()
+
         token = self.auth()
-        self.headers = {
-            'Authorization': f'bearer {token}',
-            'Content-Type': 'text/plain;charset=UTF-8',
-            'service': 'Dream',
-            'Origin': 'https://app.wombo.art',
-            'Referer': 'https://app.wombo.art/'
-        }
+        self.headers = {'Authorization': f'bearer {token}'}
+
         start = time.time()
         max_poll_count_timeout = 0
         attempt = 1
         while attempt <= self.attempts:
             try:
-                task_id = self.get_task()
-                self.start_task(task_id, self.prompt, self.style)
-
+                task_id = self.start_task()
                 pending = True
                 task = {}
                 self.pending_count = 0
@@ -211,12 +176,26 @@ class Wombo:
                     self.handle_infinite_polling(start)
                     time.sleep(self.poll_sleep)
                     task = self.check_task(task_id)
-                    pending = task['state'] != 'completed'
-                print(task['result']['final'])
-                with open(f'{self.directory}/{format((attempt), "02")}.jpg',
-                          'wb') as f:
-                    f.write(httpx.get(task['result']['final']).content)
-                    attempt += 1
+                    if task['state'] == 'failed' and task['is_nsfw'] is True:
+                        pending = False
+                    else:
+                        pending = task['state'] != 'completed'
+
+                urls = task['photo_url_list']
+                if len(urls) == 0:
+                    attempt = self.attempts
+                    with open(f'{self.directory}/info.txt', 'a') as txt:
+                        txt.write('\n\nProbably hit the NSFW filter')
+                else:
+                    url = urls[len(urls) - 1]
+                    with open(f'{self.directory}/{format(attempt, "02")}.jpg',
+                              'wb') as f:
+                        f.write(httpx.get(url).content)
+                    with open(f'{self.directory}/info.txt', 'a') as txt:
+                        txt.write(f'\n\n{attempt}: {url}')
+
+                attempt += 1
+
             except PollingTimeoutError:
                 print(f'Too many polls! The limit is {self.poll_count}')
                 max_poll_count_timeout += 1
@@ -225,7 +204,8 @@ class Wombo:
                                        f'{self.max_poll_count_timeout}')
 
         if self.attempts > 1:
-            self.generate_gestalt_image()
+            generate_gestalt_image(self.directory, self.name)
+
         self.client.close()
 
 
@@ -239,27 +219,45 @@ def arg_parser() -> argparse.ArgumentParser:
                         help='Wombo string prompt (put in double quotes!)')
     parser.add_argument('--style',
                         dest='style',
-                        default='32',
+                        default='78',
                         help=f'Styles: {STYLES}')
     parser.add_argument('--attempts',
                         dest='attempts',
                         type=int,
                         default=1,
                         help='num attempts'),
+    parser.add_argument('--ratio',
+                        dest='ratio',
+                        default='1:1',
+                        help='ratio (accepts "1:1", "4:3", "3:4", '
+                        '"16:9", "9:16", or "960:1568")'),
+    parser.add_argument('--variation_id',
+                        dest='variation_id',
+                        default="",
+                        help='create variations of this task ID'),
+    parser.add_argument('--input_image_id',
+                        dest='input_image_id',
+                        default="",
+                        help='input image mediastore ID'),
+    parser.add_argument('--weight',
+                        dest='weight',
+                        default="MEDIUM",
+                        help='input image weight (accepts "LOW", '
+                        '"MEDIUM", "HIGH")'),
     parser.add_argument('--sleep',
                         dest='sleep',
                         type=int,
-                        default=5,
+                        default=6,
                         help='Seconds to sleep between GET polls')
     parser.add_argument('--poll_count',
                         dest='poll_count',
                         type=int,
-                        default=5,
+                        default=6,
                         help='Number of intervals to wait for')
     parser.add_argument('--max_poll_count_timeout',
                         dest='max_poll_count_timeout',
                         type=int,
-                        default=24,
+                        default=36,
                         help='Maximum number of times allowed to poll count '
                         'timeout before exit')
     return parser
