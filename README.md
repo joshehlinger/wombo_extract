@@ -8,11 +8,11 @@ Wombo Dream: https://app.wombo.art/
 
 `source env/bin/activate`
 
-`pip install -r requirements.txt`
+`pip install -e .`
 
 
 ## Usage
-`python extract.py --email=email@foo.bar --password=p@assword --prompt="test foo bar" --attempts=5`
+`wombo-extract --email=email@foo.bar --password=p@assword --prompt="test foo bar" --attempts=5`
 
 Note: You'll need to double-quote the `prompt` if it has spaces
 

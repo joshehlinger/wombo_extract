@@ -7,9 +7,7 @@ import re
 
 
 def generate_gestalt_image(directory: str, name: str):
-    all_images = [
-        f for f in os.listdir(directory) if re.match(r'.*.jpg', f)
-    ]
+    all_images = [f for f in os.listdir(directory) if re.match(r'.*.jpg', f)]
     all_images.sort()
     images = [Image.open(f'{directory}/{x}') for x in all_images]
     widths, heights = zip(*(i.size for i in images))
