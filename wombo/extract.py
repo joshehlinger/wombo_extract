@@ -43,7 +43,7 @@ class Extractor:
         self.pending_count = 0
 
         self.input_image_id = config.input_image_id
-        self.weight = config.input_image_id.upper()
+        self.weight = config.weight.upper()
         self.variation_id = config.variation_id
 
         self.ratio_string = config.ratio
@@ -178,20 +178,23 @@ class Extractor:
                         pending = False
                     else:
                         pending = task['state'] != 'completed'
-
                 urls = task['photo_url_list']
-                if len(urls) == 0:
-                    attempt = self.attempts
+                if len(urls) == 0: # check if the prompt triggered the NSFW filter
+                    attempt = self.attempts # skip to the end of the loop
                     with open(f'{self.directory}/info.txt', 'a') as txt:
-                        txt.write('\n\nProbably hit the NSFW filter')
+                        txt.write('\n\nTask returned no image URLs. The prompt probably triggered the NSFW word filter.')
                 else:
-                    url = urls[len(urls) - 1]
-                    with open(f'{self.directory}/{format(attempt, "02")}.jpg',
+                    if task['result'] and task['result']['final']:
+                        # skip the upscaled/smoothed "final.jpg"; target penultimate url instead
+                        url = urls[len(urls) - 2]
+                    else:
+                        # no upscaling/smoothing if the NSFW image filter is triggered
+                        url = urls[len(urls) - 1]
+                    with open(f'{self.directory}/{format(attempt, "02")} - {task["id"]}.jpg',
                               'wb') as f:
                         f.write(httpx.get(url).content)
                     with open(f'{self.directory}/info.txt', 'a') as txt:
                         txt.write(f'\n\n{attempt}: {url}')
-
                 attempt += 1
 
             except PollingTimeoutError:
