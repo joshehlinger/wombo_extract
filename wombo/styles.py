@@ -92,4 +92,8 @@ STYLES = {
     'dreamwave v2': 97,
     'illustrated v2': 98,
     'abstract fluid v2': 99,
+    'ink v2': 100,
+    'poster art': 101,
+    'figure v2': 102,
+    'horror v2': 103
 }
