@@ -153,9 +153,11 @@ class Extractor:
 
         textfile = open(f'{self.directory}/info.txt', 'w+')
         textfile.write(
-            f'{self.prompt}\nstyle: {self.style}\naspect ratio: '
-            f'{self.ratio_string}\ntime: {time.strftime("%Y-%m-%d %H:%M:%S")}'
-            f'\n\nauth_url: {self.auth_url}\n\n')
+            f'{self.prompt}\nStyle: {self.style}'
+            f'\nAspect Ratio: {self.ratio_string}'
+            f'\nCreated: {time.strftime("%Y-%m-%d %H:%M:%S")}'
+            f'\nInput Image ID: {self.input_image_id}'
+            f'\nVariation ID: {self.variation_id}\n\n')
         textfile.close()
 
         token = self.auth()
