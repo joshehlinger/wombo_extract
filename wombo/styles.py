@@ -95,5 +95,7 @@ STYLES = {
     'ink v2': 100,
     'poster art': 101,
     'figure v2': 102,
-    'horror v2': 103
+    'horror v2': 103,
+    'horror cut v2.0': 104,
+    'horror cut v2.1': 105
 }
