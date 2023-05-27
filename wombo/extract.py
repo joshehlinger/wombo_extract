@@ -4,6 +4,16 @@ import time
 import httpx
 import yarl
 
+import base64
+from PIL import Image
+import io
+import json
+import csv
+
+import sys
+
+csv.field_size_limit(sys.maxsize)
+
 from wombo.gestalt import generate_gestalt_image
 from wombo.styles import STYLES
 
@@ -43,6 +53,7 @@ class Extractor:
         self.pending_count = 0
 
         self.input_image_id = config.input_image_id
+        self.input_image_path = config.input_image_path
         self.weight = config.weight.upper()
         self.variation_id = config.variation_id
 
@@ -83,11 +94,57 @@ class Extractor:
         resp = self.client.post(str(self.auth_url), json=auth_body)
         body = resp.json()
         id_token = body['idToken']
-
         return id_token
 
     def start_task(self, freq: int = 10):
+
+        # if applicable, upload local image as input
+        if self.input_image_path:
+            # convert image to Base64
+            with Image.open(self.input_image_path) as image:
+                buffered = io.BytesIO()
+                image.save(buffered, format="JPEG")
+                img_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+                # Check if this base64 string is already in our list of uploaded images
+                csv_file_path = './uploaded/ids.csv'
+                if os.path.exists('./uploaded/') is False:
+                    os.mkdir('./uploaded/')
+                if os.path.exists(csv_file_path):
+                    with open(csv_file_path, 'a+') as csvfile:
+                        csvfile.seek(0)
+                        reader = csv.reader(csvfile)
+                        for row in reader:
+                            if row and row[1] == img_base64:
+                                self.input_image_id = row[0]
+                                break
+                
+                if not self.input_image_id:
+                    # post image to the mediastore API, receive ID as response
+                    url = 'https://dream.ai/api/mediastore'
+                    body = json.dumps({
+                        'image': img_base64,
+                        'media_suffix': 'jpeg',
+                        'num_uploads': '1'
+                    })
+                    resp = self.client.post(url, data=body, headers=self.headers)
+                    resp.raise_for_status()
+                    self.input_image_id = resp.json()['mediastore_uid']
+
+                    # add the new base64 string and mediastore ID to the CSV file
+                    with open(csv_file_path, 'a', newline='') as csvfile:
+                        writer = csv.writer(csvfile)
+                        writer.writerow([self.input_image_id, img_base64])
+
+                    # save a copy of the image in the "uploaded" directory
+                    filename = os.path.basename(self.input_image_path)
+                    # prepend the mediastore ID for future use
+                    new_filename = f"{self.input_image_id} - {filename}"
+                    new_path = os.path.join('uploaded', new_filename)
+                    image.save(new_path)
+
         body = {'input_spec': {'display_freq': freq, 'style': self.style}}
+
         if self.variation_id:
             body['input_spec'].update({
                 'gen_type': 'VARIATION',
@@ -157,6 +214,7 @@ class Extractor:
             f'\nAspect Ratio: {self.ratio_string}'
             f'\nCreated: {time.strftime("%Y-%m-%d %H:%M:%S")}'
             f'\nInput Image ID: {self.input_image_id}'
+            f'\nInput Image Weight: {self.weight}'
             f'\nVariation ID: {self.variation_id}\n\n')
         textfile.close()
 
